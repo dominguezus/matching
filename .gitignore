@@ -1,0 +1,19 @@
+
+*.egg-info/
+*.iml
+*.project
+*.pyc
+*.pydevproject
+*.swp
+*.deb
+*~
+*#
+
+
+# Test output files / cache
+.cache/
+.coverage
+.coverage.*
+.tox
+coverage.xml
+junit*.xml
