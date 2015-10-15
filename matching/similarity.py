@@ -32,8 +32,32 @@ def shingle(s, k):
     for i in range(len(s) - k + 1):
         yield tuple(s[i:i + k])  # Returning tuple allows making set of token lists
 
+
 def score_string(name, other_name, scoring_func=jaccard, analyzer_func=lambda x: x):
     return scoring_func(analyzer_func(name), analyzer_func(other_name))
+
+
+def score_strings(name, candidate_names, scoring_func=jaccard, analyzer_func=lambda x: x):
+    ''' Compute scoring function on name against all candidate names.  The analyzer_func is applied to all strings
+    before scoring '''
+    f = functools.partial(score_string, analyzer_func(name), scoring_func=scoring_func, analyzer_func=analyzer_func)
+    return zip(candidate_names, map(f, candidate_names))
+
+
+def matching_string(name, candidate_names, scoring_func=jaccard, analyzer_func=lambda x: x):
+    ''' Compute scores and return highest scoring candidate '''
+    return sorted(score_strings(name, candidate_names, scoring_func, analyzer_func),
+                  key=lambda x: x[1],
+                  reverse=True)[0]
+
+
+def score_records(item, records, scoring_func):
+    return ((r, scoring_func(item, r)) for r in records)
+
+
+def match_k_nearest_records(record, records, scoring_func, k=10):
+    ''' Brute force K-nearest neighbors.  '''
+    return sorted(score_records(record, records, scoring_func), key=lambda x: x[1], reverse=True)[:k]
 
 
 def tokens(name):
