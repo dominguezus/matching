@@ -6,6 +6,9 @@ import re
 import jellyfish
 from collections import Counter, defaultdict
 
+from matching.util import shingle, tokens
+
+
 '''
 @todo - MinHash/LSH for larger data sets
       - Look at actual n-gram frequencies and do something like MI or K-L
@@ -24,13 +27,6 @@ def jaccard(s1, s2):
 def jaccard_kgram(s1, s2, k=2):
     ''' Converts inputs to k-gram/shingles before computing Jaccard similarity '''
     return jaccard(frozenset(shingle(s1, k)), frozenset(shingle(s2, k)))
-
-
-def shingle(s, k):
-    """Generate k-length shingles of string s."""
-    k = min(len(s), k)
-    for i in range(len(s) - k + 1):
-        yield tuple(s[i:i + k])  # Returning tuple allows making set of token lists
 
 
 def score_string(name, other_name, scoring_func=jaccard, analyzer_func=lambda x: x):
@@ -58,12 +54,6 @@ def score_records(item, records, scoring_func):
 def match_k_nearest_records(record, records, scoring_func, k=10):
     ''' Brute force K-nearest neighbors.  '''
     return sorted(score_records(record, records, scoring_func), key=lambda x: x[1], reverse=True)[:k]
-
-
-def tokens(name):
-    ''' Return a generator that gets tokens from the input name.  Should probably
-    do this with NLTK eventually '''
-    return (t.lower() for t in re.split('\W+', name))
 
 
 def rankings(t1, t2, sim_func=jaccard):

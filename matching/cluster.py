@@ -1,4 +1,7 @@
 import itertools
+from collections import defaultdict
+
+from matching.similarity import shingle
 
 
 def make_set(x):
@@ -60,3 +63,14 @@ def clusterdf(df):
 
     df['cluster_id'] = df.index_x.apply(lambda x: find(node_dict[x]).id)
     return df
+
+
+
+def ngram_index(df, name_field, n=4):
+    index = defaultdict(set)
+    for idx, row in df.iterrows():
+        for s in shingle(row[name_field], k=n):
+            index[s].add(idx)
+    return index
+
+

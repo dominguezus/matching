@@ -3,7 +3,7 @@ import math
 import operator
 import numpy as np
 import jellyfish
-
+from functools import reduce
 
 def field_w(a, b, m, u):
     return math.log(m/u, 2) if a == b else math.log((1.0 - m)/(1.0 - u))
@@ -13,12 +13,23 @@ def fs_weights(ra, rb, m_u):
     return sum( field_w(ra[i], rb[i], m_u[i][1], m_u[i][2]) for i in range(len(ra)) )
 
 
+def log_score(gamma, mh, uh):
+    return sum([np.log2(mh[i]/uh[i]) if g==1 else np.log2((1-mh[i])/(1-uh[i])) for i,g in enumerate(gamma)])
+
+
 def gamma_pattern(r_ab):
     t1_0 = lambda x: 1 if x else 0
 #    return [1 if a_i == b_i else 0 for (a_i, b_i) in zip(r_ab[0], r_ab[1])]
-    return [t1_0(jellyfish.jaro_winkler(r_ab[0][0], r_ab[1][0]) > 0.9),
+    return [t1_0(jellyfish.jaro_winkler(r_ab[0][0], r_ab[1][0]) > 0.8),
             t1_0(r_ab[0][1] == r_ab[1][1]),
             t1_0(r_ab[0][2] == r_ab[1][2])]
+
+
+def mp(gamma, mh, uh):
+    return reduce(operator.mul, (mh[i] ** g * (1 - mh[i]) ** (1 - g) for i,g in enumerate(gamma)))
+
+def up(gamma, mh, uh):
+    return reduce(operator.mul, (uh[i] ** g * (1 - uh[i]) ** (1 - g) for i,g in enumerate(gamma)))
 
 
 def expectation_step(mh, uh, ph, gammas):
@@ -29,8 +40,8 @@ def expectation_step(mh, uh, ph, gammas):
 
     # for each record, need the gamma pattern
     for j, gamma in enumerate(gammas):
-        m_product = reduce(operator.mul, (mh[i] ** gamma[i] * (1 - mh[i]) ** (1 - gamma[i]) for i in range(len(gamma))))
-        u_product = reduce(operator.mul, (uh[i] ** gamma[i] * (1 - uh[i]) ** (1 - gamma[i]) for i in range(len(gamma))))
+        m_product = mp(gamma, mh, uh)
+        u_product = up(gamma, mh, uh)
 
         g_m[j] = (ph * m_product) / (ph * m_product + (1-ph) * u_product)
         g_u[j] = ((1-ph) * u_product) / (ph * m_product + (1-ph) * u_product)
@@ -45,8 +56,8 @@ def maximization_step(gm, gu, gammas):
     u_h = np.zeros(len(gammas[0]))
 
     for j, gamma in enumerate(gammas):
-        m_h += [gm[j] * gamma[i] for i in range(len(gamma))]
-        u_h += [gu[j] * gamma[i] for i in range(len(gamma))]
+        m_h += [gm[j] * g for g in gamma]
+        u_h += [gu[j] * g for g in gamma]
 
         sum_g_m += gm[j]
         sum_g_u += gu[j]
@@ -61,7 +72,7 @@ def fs_em(record_pairs, mh, uh, ph, gamma_pattern_func=None):
         g_m, g_u = expectation_step(mh, uh, ph, gammas)
         mh_last = mh
         mh, uh, ph = maximization_step(g_m, g_u, gammas)
-        #print(mh, uh, ph)
+        print(mh, uh, ph)
         if sum((mc - ml)**2 for mc, ml in zip(mh, mh_last)) < 1e-6:
             break
     return mh, uh, ph
